@@ -79,28 +79,59 @@ function medianCut(pixels: Pixel[], colorCount: number): ExtractedColor[] {
   }
 
   const totalPixels = pixels.length;
-  const colors = buckets.map((bucket) => {
-    const sum = bucket.reduce(
-      (acc, p) => [
-        acc[0] + p[0],
-        acc[1] + p[1],
-        acc[2] + p[2],
-        acc[3] + p[3],
-        acc[4] + p[4],
-      ],
-      [0, 0, 0, 0, 0],
-    );
+
+  // 각 버킷의 대표색(평균)
+  const reps = buckets.map((bucket) => {
+    let sr = 0;
+    let sg = 0;
+    let sb = 0;
+    for (const p of bucket) {
+      sr += p[0];
+      sg += p[1];
+      sb += p[2];
+    }
     const n = bucket.length;
-    const r = Math.round(sum[0] / n);
-    const g = Math.round(sum[1] / n);
-    const b = Math.round(sum[2] / n);
     return {
-      hex: rgbToHex(r, g, b),
-      rgb: { r, g, b },
-      population: n / totalPixels,
-      position: { x: sum[3] / n, y: sum[4] / n },
+      r: Math.round(sr / n),
+      g: Math.round(sg / n),
+      b: Math.round(sb / n),
     };
   });
+
+  // median cut은 버킷을 균등 분할하므로, 실제 "어느 색이 더 많은지"를 알려면
+  // 모든 픽셀을 가장 가까운 대표색에 다시 배정해 진짜 비율을 센다.
+  const counts = new Array(reps.length).fill(0);
+  const posX = new Array(reps.length).fill(0);
+  const posY = new Array(reps.length).fill(0);
+  for (const p of pixels) {
+    let best = 0;
+    let bestDist = Infinity;
+    for (let i = 0; i < reps.length; i++) {
+      const dr = p[0] - reps[i].r;
+      const dg = p[1] - reps[i].g;
+      const db = p[2] - reps[i].b;
+      const dist = dr * dr + dg * dg + db * db;
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = i;
+      }
+    }
+    counts[best] += 1;
+    posX[best] += p[3];
+    posY[best] += p[4];
+  }
+
+  const colors = reps
+    .map((rep, i) => ({
+      hex: rgbToHex(rep.r, rep.g, rep.b),
+      rgb: { r: rep.r, g: rep.g, b: rep.b },
+      population: counts[i] / totalPixels,
+      position:
+        counts[i] > 0
+          ? { x: posX[i] / counts[i], y: posY[i] / counts[i] }
+          : { x: 0.5, y: 0.5 },
+    }))
+    .filter((c) => c.population > 0);
 
   // 단색 영역이 크면 같은 색이 여러 버킷으로 나올 수 있어 hex 기준으로 병합
   const merged = new Map<string, ExtractedColor>();

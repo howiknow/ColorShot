@@ -1,4 +1,4 @@
-import { Image, Text, View } from 'react-native';
+import { Image, Pressable, Text, View } from 'react-native';
 import type { SavedColor } from '../lib/storage';
 
 export interface CollectedColor extends SavedColor {
@@ -20,23 +20,39 @@ function monthDay(t: number): string {
 
 interface Props {
   entry: CollectedColor;
+  /** 같은 HEX를 주운 횟수 (2 이상이면 배지 표시) */
+  count?: number;
+  onPress?: () => void;
 }
 
-/** 주운 색 하나 = 그 색 그대로의 단색 카드 */
-export function ColorCard({ entry }: Props) {
+/** 주운 색 하나 = 그 색 그대로의 단색 카드. 누르면 그 색만 모인 앨범으로 */
+export function ColorCard({ entry, count = 1, onPress }: Props) {
   const light = isLight(entry.rgb);
   const primary = light ? '#1c1b19' : '#ffffff';
   const secondary = light ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.72)';
   const thumbBorder = light ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.5)';
+  const badgeBg = light ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.22)';
 
   return (
-    <View className="mb-[13px] w-[48.5%]">
+    <Pressable
+      className="mb-[13px] w-[48.5%] active:opacity-90"
+      onPress={onPress}
+    >
       <View
         className="overflow-hidden rounded-[26px] p-4"
         style={{ aspectRatio: 0.82, backgroundColor: entry.hex }}
       >
-        {/* 출처 사진 썸네일 (사진에서 주운 색만) */}
-        {entry.thumb ? (
+        {/* 우상단: 여러 번 주웠으면 개수 배지, 아니면 출처 썸네일 */}
+        {count > 1 ? (
+          <View
+            className="absolute right-3 top-3 z-10 h-7 min-w-7 flex-row items-center justify-center rounded-full px-2"
+            style={{ backgroundColor: badgeBg }}
+          >
+            <Text style={{ color: primary, fontSize: 12, fontWeight: '700' }}>
+              {count}
+            </Text>
+          </View>
+        ) : entry.thumb ? (
           <View className="absolute right-3 top-3 z-10">
             <Image
               source={{ uri: entry.thumb }}
@@ -64,10 +80,10 @@ export function ColorCard({ entry }: Props) {
             {entry.hex}
           </Text>
           <Text style={{ color: secondary, fontSize: 11.5, marginTop: 2 }}>
-            {monthDay(entry.createdAt)}
+            {count > 1 ? `${count}번 주움` : monthDay(entry.createdAt)}
           </Text>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
