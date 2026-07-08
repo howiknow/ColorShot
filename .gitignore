@@ -39,3 +39,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# 디자인 목업 (앱 코드 아님)
+colorshot-design.html
